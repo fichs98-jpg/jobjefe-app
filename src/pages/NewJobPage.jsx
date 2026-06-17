@@ -45,6 +45,7 @@ export default function NewJobPage({ onSuccess }) {
   ])
   const [loading, setLoading] = useState(false)
   const [listening, setListening] = useState(false)
+  const [voiceLang, setVoiceLang] = useState('en-US')
   const [showTemplates, setShowTemplates] = useState(false)
   const recRef = useRef(null)
 
@@ -64,7 +65,7 @@ export default function NewJobPage({ onSuccess }) {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition
     if (!SR) return showToast('Voice not supported in this browser', 'error')
     const rec = new SR()
-    rec.lang = navigator.language || 'en-US'  // auto-detect idioma del dispositivo
+    rec.lang = voiceLang  // idioma seleccionado por el técnico
     rec.continuous = false
     rec.interimResults = false
     rec.onstart = () => setListening(true)
@@ -136,11 +137,22 @@ export default function NewJobPage({ onSuccess }) {
       <div className="card">
         {/* Voz + Templates */}
         <div className="flex gap-2 mb-4">
-          <button onClick={startVoice}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold border-2 transition-all
-              ${listening ? 'border-rojo bg-red-50 text-rojo animate-pulse' : 'border-naranja text-naranja'}`}>
-            🎤 {listening ? 'Listening…' : 'Voice input'}
-          </button>
+          <div className="flex-1 flex flex-col gap-1.5">
+            <div className="flex gap-1">
+              {[['en-US','🇺🇸 EN'],['es-US','🇲🇽 ES']].map(([lang, label]) => (
+                <button key={lang} onClick={() => setVoiceLang(lang)}
+                  className={`flex-1 text-xs font-bold py-1.5 rounded-lg border-2 transition-all
+                    ${voiceLang === lang ? 'border-naranja bg-naranja-light text-naranja' : 'border-borde text-muted'}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            <button onClick={startVoice}
+              className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold border-2 transition-all
+                ${listening ? 'border-rojo bg-red-50 text-rojo animate-pulse' : 'border-naranja text-naranja'}`}>
+              🎤 {listening ? 'Listening…' : 'Tap & speak'}
+            </button>
+          </div>
           <button onClick={() => setShowTemplates(!showTemplates)}
             className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold border-2 border-borde text-muted">
             📋 Templates
