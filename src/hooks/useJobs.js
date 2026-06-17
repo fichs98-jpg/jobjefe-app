@@ -6,9 +6,13 @@ export function useJobs() {
   const { setJobs, showToast } = useStore()
 
   const loadJobs = useCallback(async () => {
+    const { data: { user } } = await sb.auth.getUser()
+    if (!user) return
+
     const { data: jobs, error } = await sb
       .from('jobs')
       .select('id,service_description,status,public_token,created_at,client_name,client_phone,client_address,approved_by_name,approved_at,total_amount,scheduled_date,scheduled_time')
+      .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .limit(100)
 

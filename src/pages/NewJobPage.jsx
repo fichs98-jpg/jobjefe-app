@@ -78,9 +78,27 @@ export default function NewJobPage({ onSuccess }) {
   }
 
   function parseVoiceInput(text) {
-    // Extraer descripción básica del texto de voz
-    setDesc(text)
-    showToast('Voice captured! Review and adjust.', 'success')
+    // Limpiar el texto
+    const t = text.trim()
+    setDesc(t)
+
+    // Extraer nombre del cliente: "for John", "client John Smith", "customer Maria"
+    const clientMatch = t.match(/(?:for|client|customer|mr\.?|mrs\.?|ms\.?)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i)
+    if (clientMatch) setClient(clientMatch[1])
+
+    // Extraer dirección: números seguidos de nombre de calle
+    const addrMatch = t.match(/\b(\d+\s+[A-Za-z]+(?:\s+(?:St|Ave|Blvd|Rd|Dr|Ln|Way|Ct|Circle|Street|Avenue|Road|Drive))?(?:,\s*[A-Za-z\s]+)?)\b/i)
+    if (addrMatch) setAddress(addrMatch[1])
+
+    // Extraer teléfono
+    const phoneMatch = t.match(/\(?\d{3}\)?[\s\-]?\d{3}[\s\-]?\d{4}/)
+    if (phoneMatch) setPhone(phoneMatch[0])
+
+    // Extraer precios: "$180", "180 dollars", "one eighty"
+    const prices = [...t.matchAll(/\$?\s?(\d{2,5})(?:\s*dollars?)?/gi)].map(m => parseInt(m[1])).filter(n => n >= 50 && n <= 50000)
+    if (prices.length >= 1) setOpts(prev => prev.map((o, i) => ({ ...o, amount: String(prices[i] || '') })))
+
+    showToast(`Voice captured! ${clientMatch ? '👤 ' : ''}${addrMatch ? '📍 ' : ''}${prices.length ? '💰 ' : ''}Review fields.`, 'success')
   }
 
   async function handleSave() {
