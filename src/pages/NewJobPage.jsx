@@ -66,7 +66,7 @@ export default function NewJobPage({ onSuccess }) {
     if (!SR) return showToast('Voice not supported in this browser', 'error')
     const rec = new SR()
     rec.lang = voiceLang  // idioma seleccionado por el técnico
-    rec.continuous = false
+    rec.continuous = true   // no para después de primera pausa
     rec.interimResults = false
     rec.onstart = () => setListening(true)
     rec.onend = () => setListening(false)
@@ -77,6 +77,15 @@ export default function NewJobPage({ onSuccess }) {
     }
     recRef.current = rec
     rec.start()
+    // Auto-stop después de 8 segundos para no quedarse colgado
+    setTimeout(() => {
+      try { rec.stop() } catch(e) {}
+    }, 8000)
+  }
+
+  function stopVoice() {
+    try { recRef.current?.stop() } catch(e) {}
+    setListening(false)
   }
 
   async function parseVoiceInput(text) {
@@ -136,27 +145,37 @@ export default function NewJobPage({ onSuccess }) {
     <div className="screen pt-4">
       <div className="card">
         {/* Voz + Templates */}
-        <div className="flex gap-2 mb-4">
-          <div className="flex-1 flex flex-col gap-1.5">
-            <div className="flex gap-1">
-              {[['en-US','🇺🇸 EN'],['es-US','🇲🇽 ES']].map(([lang, label]) => (
-                <button key={lang} onClick={() => setVoiceLang(lang)}
-                  className={`flex-1 text-xs font-bold py-1.5 rounded-lg border-2 transition-all
-                    ${voiceLang === lang ? 'border-naranja bg-naranja-light text-naranja' : 'border-borde text-muted'}`}>
-                  {label}
-                </button>
-              ))}
-            </div>
-            <button onClick={startVoice}
-              className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold border-2 transition-all
-                ${listening ? 'border-rojo bg-red-50 text-rojo animate-pulse' : 'border-naranja text-naranja'}`}>
-              🎤 {listening ? 'Listening…' : 'Tap & speak'}
-            </button>
-          </div>
+        <div className="flex gap-2 mb-3">
           <button onClick={() => setShowTemplates(!showTemplates)}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold border-2 border-borde text-muted">
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold border-2 border-borde text-muted active:scale-95 transition-all">
             📋 Templates
           </button>
+        </div>
+
+        {/* Selector idioma + botón voz */}
+        <div className="mb-4">
+          <div className="flex gap-1.5 mb-2">
+            {[['en-US','🇺🇸 English'],['es-US','🇲🇽 Español']].map(([lang, label]) => (
+              <button key={lang} onClick={() => setVoiceLang(lang)}
+                className={`flex-1 text-xs font-bold py-2 rounded-lg border-2 transition-all active:scale-95
+                  ${voiceLang === lang ? 'border-naranja bg-naranja-light text-naranja' : 'border-borde text-muted bg-white'}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+          <button onClick={listening ? stopVoice : startVoice}
+            className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold border-2 transition-all active:scale-95
+              ${listening ? 'border-rojo bg-red-50 text-rojo' : 'border-naranja text-naranja bg-naranja-light'}`}>
+            {listening
+              ? <><span className="inline-block w-2 h-2 bg-rojo rounded-full animate-pulse"/>  Listening… tap to stop</>
+              : <>🎤 Hold & speak — describe the job</>
+            }
+          </button>
+          {listening && (
+            <p className="text-xs text-center text-muted mt-2">
+              Say the job, client name, address and 3 prices
+            </p>
+          )}
         </div>
 
         {/* Templates dropdown */}
