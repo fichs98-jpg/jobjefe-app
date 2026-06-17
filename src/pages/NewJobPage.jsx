@@ -94,8 +94,17 @@ export default function NewJobPage({ onSuccess }) {
     const phoneMatch = t.match(/\(?\d{3}\)?[\s\-]?\d{3}[\s\-]?\d{4}/)
     if (phoneMatch) setPhone(phoneMatch[0])
 
-    // Extraer precios: "$180", "180 dollars", "one eighty"
-    const prices = [...t.matchAll(/\$?\s?(\d{2,5})(?:\s*dollars?)?/gi)].map(m => parseInt(m[1])).filter(n => n >= 50 && n <= 50000)
+
+    // Extraer precios — quitar dirección primero para no confundir número de calle con precio
+    const textForPrices = addrMatch ? t.replace(addrMatch[0], '') : t
+    // 1. Buscar $180 o "180 dollars"
+    let prices = [...textForPrices.matchAll(/\$(\d{2,5})|(\d{2,5})\s*(?:dollars?|bucks?)/gi)]
+      .map(m => parseInt(m[1] || m[2])).filter(n => n >= 50 && n <= 50000)
+    // 2. Buscar números después de "options", "option", "pricing"
+    if (prices.length === 0) {
+      const pm = textForPrices.match(/(?:options?|pricing|quote)[,\s]+(\d{2,5})[,\s]+(\d{2,5})?[,\s]*(\d{2,5})?/i)
+      if (pm) prices = [pm[1],pm[2],pm[3]].filter(Boolean).map(Number).filter(n => n >= 50 && n <= 50000)
+    }
     if (prices.length >= 1) setOpts(prev => prev.map((o, i) => ({ ...o, amount: String(prices[i] || '') })))
 
     showToast(`Voice captured! ${clientMatch ? '👤 ' : ''}${addrMatch ? '📍 ' : ''}${prices.length ? '💰 ' : ''}Review fields.`, 'success')
