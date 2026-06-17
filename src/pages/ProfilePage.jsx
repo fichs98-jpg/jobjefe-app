@@ -5,6 +5,8 @@ import { useStore } from '../store/useStore'
 export default function ProfilePage() {
   const { user, jobs, showToast } = useStore()
   const [uploading, setUploading] = useState(false)
+  const [waPhone, setWaPhone] = useState('')
+  const [savingPhone, setSavingPhone] = useState(false)
   const name = user?.user_metadata?.name || user?.email?.split('@')[0] || '?'
   const initials = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
 
@@ -17,6 +19,15 @@ export default function ProfilePage() {
       const rec = j.options?.find(o => o.is_selected) || j.options?.[0]
       return sum + (rec?.amount || 0)
     }, 0)
+
+  async function saveWhatsApp() {
+    if (!waPhone.trim()) return showToast('Enter your WhatsApp number', 'error')
+    setSavingPhone(true)
+    const { error } = await sb.from('users').update({ whatsapp_phone: waPhone.trim() }).eq('id', user.id)
+    setSavingPhone(false)
+    if (error) return showToast('Error saving. Try again.', 'error')
+    showToast('WhatsApp saved ✓', 'success')
+  }
 
   async function uploadLogo(e) {
     const file = e.target.files?.[0]
@@ -75,6 +86,27 @@ export default function ProfilePage() {
             <div className="text-xs text-muted">{s.label}</div>
           </div>
         ))}
+      </div>
+
+      {/* WhatsApp para notificaciones */}
+      <div className="card mb-3">
+        <div className="text-xs font-bold uppercase tracking-widest text-muted mb-3">WhatsApp notifications</div>
+        <p className="text-xs text-muted mb-3">Get a WhatsApp message the instant your client approves a quote.</p>
+        <div className="flex gap-2">
+          <input
+            className="input flex-1"
+            type="tel"
+            placeholder="+1 (555) 000-0000"
+            value={waPhone}
+            onChange={e => setWaPhone(e.target.value)}
+          />
+          <button
+            onClick={saveWhatsApp}
+            disabled={savingPhone}
+            className="bg-naranja text-white text-xs font-bold px-4 py-2 rounded-lg whitespace-nowrap active:scale-95 transition-all disabled:opacity-50">
+            {savingPhone ? '...' : 'Save'}
+          </button>
+        </div>
       </div>
 
       {/* Logo upload */}
