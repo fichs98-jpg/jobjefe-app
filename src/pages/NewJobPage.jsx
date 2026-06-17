@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import { useJobs } from '../hooks/useJobs'
 import { useStore } from '../store/useStore'
+import { transcribeAudio, startRecording } from '../lib/whisper'
 import { parseVoiceWithAI } from '../lib/voiceAI'
 
 const TEMPLATES = {
@@ -61,26 +62,37 @@ export default function NewJobPage({ onSuccess }) {
     showToast('Template applied ✓', 'success')
   }
 
-  function startVoice() {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition
-    if (!SR) return showToast('Voice not supported in this browser', 'error')
-    const rec = new SR()
-    rec.lang = voiceLang  // idioma seleccionado por el técnico
-    rec.continuous = true   // no para después de primera pausa
-    rec.interimResults = false
-    rec.onstart = () => setListening(true)
-    rec.onend = () => setListening(false)
-    rec.onerror = () => { setListening(false); showToast('Voice error. Try again.', 'error') }
-    rec.onresult = (e) => {
-      const text = e.results[0][0].transcript
-      parseVoiceInput(text)  // async — no need to await here
+  async function startVoice() {
+    if (listening) return stopVoice()
+    try {
+      setListening(true)
+      showToast('🎤 Recording… tap to stop', 'default')
+      const lang = voiceLang === 'es-US' ? 'es' : 'en'
+      const recorder = await startRecording(async (audioBlob) => {
+        setListening(false)
+        showToast('🤖 Transcribing…', 'default')
+        try {
+          const text = await transcribeAudio(audioBlob, lang)
+          if (text?.trim()) {
+            await parseVoiceInput(text.trim())
+          } else {
+            showToast('Could not hear. Try again.', 'error')
+          }
+        } catch(e) {
+          showToast('Transcription failed. Check connection.', 'error')
+        }
+      })
+      recRef.current = recorder
+      // Auto-stop después de 10 segundos
+      setTimeout(() => stopVoice(), 10000)
+    } catch(e) {
+      setListening(false)
+      if (e.name === 'NotAllowedError') {
+        showToast('Microphone permission denied', 'error')
+      } else {
+        showToast('Could not start recording', 'error')
+      }
     }
-    recRef.current = rec
-    rec.start()
-    // Auto-stop después de 8 segundos para no quedarse colgado
-    setTimeout(() => {
-      try { rec.stop() } catch(e) {}
-    }, 8000)
   }
 
   function stopVoice() {
