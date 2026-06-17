@@ -11,7 +11,10 @@ export default function DetailPage({ jobId, onBack }) {
   if (!job) return <div style={{height:"100%",overflowY:"auto",overflowX:"hidden",padding:"16px 16px 96px"}}><div className="text-center text-muted py-12">Job not found</div></div>
 
   const link = `${BASE_URL}/q/${job.public_token}`
-  const phoneClean = job.client_phone?.replace(/[\s\-\(\)]/g, '') || ''
+  // Limpiar teléfono para WhatsApp — mantener solo + y dígitos
+  const phoneClean = job.client_phone
+    ? job.client_phone.replace(/[^\d+]/g, '') // quitar todo excepto dígitos y +
+    : ''
   const waMsg = encodeURIComponent(`Hi ${job.client_name || ''}! Here's your quote — tap to review and approve: ${link}`)
   const waUrl = phoneClean ? `https://wa.me/${phoneClean}?text=${waMsg}` : `https://wa.me/?text=${waMsg}`
 

@@ -4,7 +4,7 @@ export default function SuccessModal({ data, onClose }) {
   const { showToast } = useStore()
   if (!data) return null
   const { link, client, phone } = data
-  const phoneClean = phone?.replace(/[\s\-\(\)]/g, '') || ''
+  const phoneClean = phone ? phone.replace(/[^\d+]/g, '') : ''
   const waMsg = encodeURIComponent(`Hi ${client || ''}! Here's your quote — tap to review and approve: ${link}`)
   const waUrl = phoneClean ? `https://wa.me/${phoneClean}?text=${waMsg}` : `https://wa.me/?text=${waMsg}`
 
