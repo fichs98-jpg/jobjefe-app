@@ -9,7 +9,7 @@ const DOT_COLORS = { sent: 'bg-yellow-400', approved: 'bg-verde', draft: 'bg-mut
 export default function JobsPage({ onDetail }) {
   const { jobs } = useStore()
   return (
-    <div className="screen pt-4">
+    <div style={{height:"100%",overflowY:"auto",overflowX:"hidden",padding:"16px 16px 96px"}}>
       <div className="text-xs font-bold uppercase tracking-widest text-muted mb-3">All quotes</div>
       {jobs.length === 0 ? (
         <div className="text-center py-12 text-muted">

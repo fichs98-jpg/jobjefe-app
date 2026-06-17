@@ -27,7 +27,7 @@ export default function AgendaPage({ onDetail }) {
     : null
 
   return (
-    <div className="screen pt-4">
+    <div style={{height:"100%",overflowY:"auto",overflowX:"hidden",padding:"16px 16px 96px"}}>
       {/* Week strip */}
       <div className="flex gap-1 mb-4 overflow-x-auto pb-1">
         {weekDays.map(d => {

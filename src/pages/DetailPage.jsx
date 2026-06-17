@@ -8,7 +8,7 @@ const BASE_URL = 'https://jobjefe.com'
 export default function DetailPage({ jobId, onBack }) {
   const { jobs, showToast } = useStore()
   const job = jobs.find(j => j.id === jobId)
-  if (!job) return <div className="screen pt-4"><div className="text-center text-muted py-12">Job not found</div></div>
+  if (!job) return <div style={{height:"100%",overflowY:"auto",overflowX:"hidden",padding:"16px 16px 96px"}}><div className="text-center text-muted py-12">Job not found</div></div>
 
   const link = `${BASE_URL}/q/${job.public_token}`
   const phoneClean = job.client_phone?.replace(/[\s\-\(\)]/g, '') || ''
@@ -77,7 +77,7 @@ export default function DetailPage({ jobId, onBack }) {
   }
 
   return (
-    <div className="screen pt-0">
+    <div style={{height:"100%",overflowY:"auto",overflowX:"hidden",padding:"16px 16px 96px"}}>
       {/* Hero */}
       <div className="bg-jefe -mx-4 px-4 pt-4 pb-4 mb-4">
         <button onClick={onBack} className="text-white/60 text-sm mb-2 flex items-center gap-1">← Back</button>

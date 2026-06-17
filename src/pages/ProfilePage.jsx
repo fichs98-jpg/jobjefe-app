@@ -51,7 +51,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="screen pt-4">
+    <div style={{height:"100%",overflowY:"auto",overflowX:"hidden",padding:"16px 16px 96px"}}>
       {/* Profile header */}
       <div className="card flex items-center gap-4 mb-3">
         <div className="w-14 h-14 rounded-full bg-naranja text-white text-xl font-bold flex items-center justify-center flex-shrink-0">

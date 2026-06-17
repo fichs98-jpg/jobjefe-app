@@ -154,7 +154,7 @@ export default function NewJobPage({ onSuccess }) {
   }
 
   return (
-    <div className="screen pt-4">
+    <div style={{height:"100%",overflowY:"auto",overflowX:"hidden",padding:"16px 16px 96px"}}>
       <div className="card">
         {/* Voz + Templates */}
         <div className="flex gap-2 mb-3">

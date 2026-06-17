@@ -22,7 +22,7 @@ export default function HomePage({ onNewJob, onDetail }) {
   const recent = jobs.slice(0, 5)
 
   return (
-    <div className="screen pt-4">
+    <div style={{height:"100%",overflowY:"auto",overflowX:"hidden",padding:"16px 16px 96px"}}>
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 mb-4">
         {[{ num: sent, label: 'Total quotes' }, { num: approved, label: 'Approved' }].map(s => (
