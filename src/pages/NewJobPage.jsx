@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { useJobs } from '../hooks/useJobs'
 import { useStore } from '../store/useStore'
 import { transcribeAudio, startRecording } from '../lib/whisper'
+import GuidedVoicePage from './GuidedVoicePage'
 import { parseVoiceWithAI } from '../lib/voiceAI'
 
 const TEMPLATES = {
@@ -46,6 +47,8 @@ export default function NewJobPage({ onSuccess }) {
   ])
   const [loading, setLoading] = useState(false)
   const [listening, setListening] = useState(false)
+  const [processing, setProcessing] = useState(false)
+  const [guidedMode, setGuidedMode] = useState(false)
   const [voiceLang, setVoiceLang] = useState('en-US')
   const [showTemplates, setShowTemplates] = useState(false)
   const recRef = useRef(null)
@@ -70,21 +73,24 @@ export default function NewJobPage({ onSuccess }) {
       const lang = voiceLang === 'es-US' ? 'es' : 'en'
       const recorder = await startRecording(async (audioBlob) => {
         setListening(false)
-        showToast('🤖 Transcribing…', 'default')
+        setProcessing(true)
         try {
           const text = await transcribeAudio(audioBlob, lang)
           if (text?.trim()) {
             await parseVoiceInput(text.trim())
           } else {
-            showToast('Could not hear. Try again.', 'error')
+            showToast('Could not hear clearly. Try again closer to mic.', 'error')
           }
         } catch(e) {
-          showToast('Transcription failed. Check connection.', 'error')
+          console.error(e)
+          showToast('Connection error. Fill in manually or retry.', 'error')
+        } finally {
+          setProcessing(false)
         }
       })
       recRef.current = recorder
       // Auto-stop después de 10 segundos
-      setTimeout(() => stopVoice(), 10000)
+      setTimeout(() => stopVoice(), 30000)
     } catch(e) {
       setListening(false)
       if (e.name === 'NotAllowedError') {
@@ -103,8 +109,6 @@ export default function NewJobPage({ onSuccess }) {
   async function parseVoiceInput(text) {
     const t = text.trim()
     setDesc(t)
-    showToast('🤖 Analyzing…', 'default')
-
     // Usar IA para interpretar el texto en cualquier idioma
     const parsed = await parseVoiceWithAI(t)
 
@@ -155,38 +159,107 @@ export default function NewJobPage({ onSuccess }) {
 
   return (
     <div style={{height:"100%",overflowY:"auto",overflowX:"hidden",padding:"16px 16px 96px"}}>
+
+      {/* Modo guiado — pantalla completa */}
+      {guidedMode && (
+        <GuidedVoicePage
+          onCancel={() => setGuidedMode(false)}
+          onDone={(data) => {
+            setGuidedMode(false)
+            if (data.desc) setDesc(data.desc)
+            if (data.client) setClient(data.client)
+            if (data.address) setAddress(data.address)
+            if (data.phone) setPhone(data.phone)
+            if (data.aiResult) {
+              if (data.aiResult.job_description) setDesc(data.aiResult.job_description)
+              if (data.aiResult.options?.length === 3) {
+                setOpts(data.aiResult.options.map(o => ({
+                  label: o.label || '',
+                  description: o.description || '',
+                  amount: String(o.amount || ''),
+                })))
+              }
+            }
+            showToast('Quote ready! Review and send. ✓', 'success')
+          }}
+        />
+      )}
+
+      {/* Overlay de procesamiento — se muestra mientras Whisper + GPT trabajan */}
+      {processing && (
+        <div className="fixed inset-0 bg-jefe/90 z-50 flex flex-col items-center justify-center gap-6 px-8">
+          <div className="w-16 h-16 border-4 border-white/20 border-t-naranja rounded-full animate-spin"/>
+          <div className="text-center">
+            <div className="text-white font-bold text-xl mb-2">Creating your quote…</div>
+            <div className="text-white/60 text-sm">Whisper is transcribing your voice</div>
+            <div className="text-white/60 text-sm mt-1">AI is building the 3 options</div>
+          </div>
+          <div className="bg-white/10 rounded-xl px-5 py-3 text-center">
+            <p className="text-white/80 text-xs italic">This takes about 5 seconds</p>
+          </div>
+        </div>
+      )}
       <div className="card">
-        {/* Voz + Templates */}
-        <div className="flex gap-2 mb-3">
+        {/* Modos de entrada */}
+        <div className="grid grid-cols-2 gap-2 mb-2">
+          {/* Modo guiado — el diferenciador */}
+          <button onClick={() => setGuidedMode(true)}
+            className="flex flex-col items-center gap-1 py-3 px-2 bg-naranja rounded-xl text-white active:scale-95 transition-all">
+            <span className="text-2xl">🎙️</span>
+            <span className="text-xs font-bold">Guided Voice</span>
+            <span className="text-xs opacity-70">Step by step</span>
+          </button>
+          {/* Templates */}
           <button onClick={() => setShowTemplates(!showTemplates)}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold border-2 border-borde text-muted active:scale-95 transition-all">
-            📋 Templates
+            className="flex flex-col items-center gap-1 py-3 px-2 bg-white border-2 border-borde rounded-xl text-muted active:scale-95 transition-all">
+            <span className="text-2xl">📋</span>
+            <span className="text-xs font-bold text-jefe">Templates</span>
+            <span className="text-xs">Pick a preset</span>
           </button>
         </div>
 
-        {/* Selector idioma + botón voz */}
+        {/* Dictado libre — para usuarios avanzados */}
         <div className="mb-4">
           <div className="flex gap-1.5 mb-2">
-            {[['en-US','🇺🇸 English'],['es-US','🇲🇽 Español']].map(([lang, label]) => (
-              <button key={lang} onClick={() => setVoiceLang(lang)}
-                className={`flex-1 text-xs font-bold py-2 rounded-lg border-2 transition-all active:scale-95
-                  ${voiceLang === lang ? 'border-naranja bg-naranja-light text-naranja' : 'border-borde text-muted bg-white'}`}>
+            {[['en-US','🇺🇸 EN'],['es-US','🇲🇽 ES']].map(([l, label]) => (
+              <button key={l} onClick={() => setVoiceLang(l)}
+                className={`flex-1 text-xs font-bold py-1.5 rounded-lg border-2 transition-all
+                  ${voiceLang === l ? 'border-naranja bg-naranja-light text-naranja' : 'border-borde text-muted'}`}>
                 {label}
               </button>
             ))}
           </div>
           <button onClick={listening ? stopVoice : startVoice}
-            className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold border-2 transition-all active:scale-95
-              ${listening ? 'border-rojo bg-red-50 text-rojo' : 'border-naranja text-naranja bg-naranja-light'}`}>
+            className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold border-2 transition-all active:scale-95
+              ${listening ? 'border-rojo bg-red-50 text-rojo' : 'border-borde text-muted'}`}>
             {listening
-              ? <><span className="inline-block w-2 h-2 bg-rojo rounded-full animate-pulse"/>  Listening… tap to stop</>
-              : <>🎤 Hold & speak — describe the job</>
+              ? <><span className="inline-block w-2 h-2 bg-rojo rounded-full animate-pulse"/> Listening… tap to stop</>
+              : <>🎤 Quick dictate — say everything at once</>
             }
           </button>
+          {/* Guía de qué decir */}
+          {!listening && (
+            <div className="mt-2 bg-gray-50 rounded-xl p-3 border border-borde">
+              <p className="text-xs font-bold text-muted mb-1">💡 Example — say something like:</p>
+              <p className="text-xs text-muted italic leading-relaxed">
+                "Water heater repair for John Davis at 412 Oak Street. Basic 280, recommended 650, premium 1200."
+              </p>
+            </div>
+          )}
           {listening && (
-            <p className="text-xs text-center text-muted mt-2">
-              Say the job, client name, address and 3 prices
-            </p>
+            <div className="mt-2 bg-red-50 rounded-xl p-3 border-2 border-rojo flex flex-col items-center gap-2">
+              <div className="flex items-center gap-2">
+                <span className="inline-block w-3 h-3 bg-rojo rounded-full animate-pulse"/>
+                <span className="text-sm font-bold text-rojo">Recording — speak clearly</span>
+              </div>
+              <p className="text-xs text-center text-muted">Say client name, address, job and prices. Tap to stop.</p>
+              <div className="flex gap-1">
+                {[...Array(5)].map((_,i) => (
+                  <div key={i} className="w-1 bg-rojo rounded-full animate-bounce"
+                    style={{height: `${8 + Math.random()*16}px`, animationDelay: `${i*0.1}s`}}/>
+                ))}
+              </div>
+            </div>
           )}
         </div>
 
