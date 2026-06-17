@@ -4,6 +4,7 @@ import { useStore } from './store/useStore'
 import { useJobs } from './hooks/useJobs'
 
 import AuthPage from './pages/AuthPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
 import HomePage from './pages/HomePage'
 import JobsPage from './pages/JobsPage'
 import NewJobPage from './pages/NewJobPage'
@@ -22,46 +23,65 @@ export default function App() {
   const [detailId, setDetailId] = useState(null)
   const [successData, setSuccessData] = useState(null)
   const [authReady, setAuthReady] = useState(false)
+  const [isResetMode, setIsResetMode] = useState(false)
 
-  // Auth listener
+  // Auth listener — detecta PASSWORD_RECOVERY event
   useEffect(() => {
     sb.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user || null)
       setAuthReady(true)
     })
-    const { data: { subscription } } = sb.auth.onAuthStateChange((_e, session) => {
+
+    const { data: { subscription } } = sb.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsResetMode(true)
+        setUser(session?.user || null)
+        setAuthReady(true)
+        return
+      }
       setUser(session?.user || null)
+      setIsResetMode(false)
     })
     return () => subscription.unsubscribe()
   }, [])
 
   // Load jobs when user is set
   useEffect(() => {
-    if (user) loadJobs()
-  }, [user])
+    if (user && !isResetMode) loadJobs()
+  }, [user, isResetMode])
 
   // Online/offline
   useEffect(() => {
     const onOnline = () => { setOnline(true); showToast('Back online ✓', 'success'); loadJobs() }
-    const onOffline = () => { setOnline(false); showToast('You\'re offline', 'error') }
+    const onOffline = () => { setOnline(false); showToast("You're offline", 'error') }
     window.addEventListener('online', onOnline)
     window.addEventListener('offline', onOffline)
     return () => { window.removeEventListener('online', onOnline); window.removeEventListener('offline', onOffline) }
   }, [])
 
-  // Polling every 30s
+  // Polling cada 30s
   useEffect(() => {
-    if (!user) return
+    if (!user || isResetMode) return
     const interval = setInterval(loadJobs, 30000)
     return () => clearInterval(interval)
-  }, [user])
+  }, [user, isResetMode])
 
+  // Splash
   if (!authReady) return (
     <div className="min-h-screen bg-jefe flex items-center justify-center">
       <div className="text-2xl font-extrabold text-white">Job<span className="text-naranja">Jefe</span></div>
     </div>
   )
 
+  // Reset password mode
+  if (isResetMode) return (
+    <ResetPasswordPage onDone={() => {
+      setIsResetMode(false)
+      loadJobs()
+    }} />
+  )
+
+  // Not logged in
   if (!user) return <AuthPage />
 
   function navigate(s) {
@@ -86,16 +106,14 @@ export default function App() {
         onRefresh={() => { loadJobs(); showToast('Updated ✓') }}
         onProfile={() => navigate('profile')}
       />
-
       <div className="flex-1 overflow-hidden relative">
-        {screen === 'home' && <HomePage onNewJob={() => navigate('new')} onDetail={showDetail} />}
-        {screen === 'jobs' && <JobsPage onDetail={showDetail} />}
-        {screen === 'new' && <NewJobPage onSuccess={handleNewJobSuccess} />}
-        {screen === 'detail' && <DetailPage jobId={detailId} onBack={() => navigate('jobs')} />}
-        {screen === 'agenda' && <AgendaPage onDetail={showDetail} />}
+        {screen === 'home'    && <HomePage onNewJob={() => navigate('new')} onDetail={showDetail} />}
+        {screen === 'jobs'    && <JobsPage onDetail={showDetail} />}
+        {screen === 'new'     && <NewJobPage onSuccess={handleNewJobSuccess} />}
+        {screen === 'detail'  && <DetailPage jobId={detailId} onBack={() => navigate('jobs')} />}
+        {screen === 'agenda'  && <AgendaPage onDetail={showDetail} />}
         {screen === 'profile' && <ProfilePage />}
       </div>
-
       <BottomNav screen={screen} onNavigate={navigate} />
       <Toast />
       {successData && <SuccessModal data={successData} onClose={() => setSuccessData(null)} />}
