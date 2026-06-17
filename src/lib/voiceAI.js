@@ -1,43 +1,42 @@
-// Usa Claude API para interpretar texto de voz y extraer campos estructurados
+// Usa GPT-4o-mini de OpenAI para interpretar texto de voz y extraer campos
 // Sin importar el idioma, formato o mezcla
 
 export async function parseVoiceWithAI(text) {
+  const OPENAI_KEY = import.meta.env.VITE_OPENAI_KEY
+  if (!OPENAI_KEY) { console.error('No OpenAI key'); return null }
+
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_KEY}`
+      },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 1000,
+        model: 'gpt-4o-mini',
+        max_tokens: 300,
         messages: [{
+          role: 'system',
+          content: 'You extract job quote info from voice input. Return ONLY valid JSON, no other text, no markdown.'
+        }, {
           role: 'user',
-          content: `Extract job quote information from this voice input (may be in English, Spanish, or mixed). Return ONLY valid JSON, no other text.
+          content: `Extract from this voice input (may be English, Spanish, or mixed):
+"${text}"
 
-Voice input: "${text}"
-
-Extract:
+Return JSON with these fields:
 - job_description: what the work is (string, required)
-- client_name: client's name if mentioned (string or null)
-- client_address: street address if mentioned (string or null)  
-- client_phone: phone number if mentioned (string or null)
-- prices: array of up to 3 numbers representing price options (numbers only, ignore street numbers)
+- client_name: client name (string or null)
+- client_address: street address (string or null)
+- client_phone: phone number (string or null)
+- prices: array of up to 3 price numbers between 50-50000 (ignore house numbers like 412)
 
-Rules:
-- For prices: look for numbers that represent money amounts ($50-$50000). Ignore house/street numbers.
-- If prices mentioned as words like "doscientos" = 200, "cuatro cincuenta" = 450, "siento" = 100 (but likely "ciento" = 100)
-- Return null for fields not found
-- Return empty array [] if no prices found
-
-Example response:
-{"job_description":"AC repair","client_name":"John Davis","client_address":"412 Main St","client_phone":null,"prices":[180,450,750]}`
+Example: {"job_description":"pipe repair","client_name":"Pedro García","client_address":"412 Main Street","client_phone":null,"prices":[200,400,700]}`
         }]
       })
     })
 
     const data = await response.json()
-    const content = data.content?.[0]?.text || ''
-    
-    // Parsear el JSON de respuesta
+    const content = data.choices?.[0]?.message?.content || ''
     const clean = content.replace(/```json|```/g, '').trim()
     return JSON.parse(clean)
   } catch (e) {
