@@ -11,11 +11,13 @@ const DOT_COLORS = { sent: 'bg-yellow-400', approved: 'bg-verde', draft: 'bg-mut
 export default function HomePage({ onNewJob, onDetail }) {
   const { jobs } = useStore()
 
-  const sent = jobs.filter(j => j.status === 'sent').length
+  const sent = jobs.length
   const approved = jobs.filter(j => j.status === 'approved').length
   const recentApproved = jobs.filter(j => {
     if (j.status !== 'approved') return false
-    return Date.now() - new Date(j.updated_at || j.created_at).getTime() < 86400000
+    const ts = j.approved_at || j.updated_at
+    if (!ts) return false
+    return Date.now() - new Date(ts).getTime() < 86400000
   })
   const recent = jobs.slice(0, 5)
 
@@ -23,7 +25,7 @@ export default function HomePage({ onNewJob, onDetail }) {
     <div className="screen pt-4">
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 mb-4">
-        {[{ num: sent, label: 'Quotes sent' }, { num: approved, label: 'Approved' }].map(s => (
+        {[{ num: sent, label: 'Total quotes' }, { num: approved, label: 'Approved' }].map(s => (
           <div key={s.label} className="bg-white rounded-xl p-4 shadow-sm text-center">
             <div className="text-3xl font-extrabold text-naranja">{s.num}</div>
             <div className="text-xs text-muted mt-1">{s.label}</div>
