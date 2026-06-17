@@ -106,7 +106,7 @@ export default function App() {
         onRefresh={() => { loadJobs(); showToast('Updated ✓') }}
         onProfile={() => navigate('profile')}
       />
-      <div className="flex-1 overflow-hidden relative">
+      <div className="flex-1 overflow-y-auto relative">
         {screen === 'home'    && <HomePage onNewJob={() => navigate('new')} onDetail={showDetail} />}
         {screen === 'jobs'    && <JobsPage onDetail={showDetail} />}
         {screen === 'new'     && <NewJobPage onSuccess={handleNewJobSuccess} />}

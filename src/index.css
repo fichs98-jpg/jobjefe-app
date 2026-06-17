@@ -10,6 +10,8 @@
     overflow: hidden;
     background: #F5F6F8;
   }
+  /* Permitir scroll dentro de containers flex */
+  .flex-1 { min-height: 0; }
   * { -webkit-tap-highlight-color: transparent; }
 }
 
@@ -30,6 +32,7 @@
     @apply bg-white rounded-xl p-4 shadow-sm mb-3;
   }
   .screen {
-    @apply flex-1 overflow-y-auto overflow-x-hidden px-4 pb-20;
+    @apply overflow-y-auto overflow-x-hidden px-4 pb-24;
+    height: 100%;
   }
 }
