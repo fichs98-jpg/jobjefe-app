@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import { useJobs } from '../hooks/useJobs'
 import { useStore } from '../store/useStore'
+import { parseVoiceWithAI } from '../lib/voiceAI'
 
 const TEMPLATES = {
   hvac: [
@@ -63,7 +64,7 @@ export default function NewJobPage({ onSuccess }) {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition
     if (!SR) return showToast('Voice not supported in this browser', 'error')
     const rec = new SR()
-    rec.lang = 'en-US'
+    rec.lang = navigator.language || 'en-US'  // auto-detect idioma del dispositivo
     rec.continuous = false
     rec.interimResults = false
     rec.onstart = () => setListening(true)
@@ -71,43 +72,42 @@ export default function NewJobPage({ onSuccess }) {
     rec.onerror = () => { setListening(false); showToast('Voice error. Try again.', 'error') }
     rec.onresult = (e) => {
       const text = e.results[0][0].transcript
-      parseVoiceInput(text)
+      parseVoiceInput(text)  // async — no need to await here
     }
     recRef.current = rec
     rec.start()
   }
 
-  function parseVoiceInput(text) {
-    // Limpiar el texto
+  async function parseVoiceInput(text) {
     const t = text.trim()
     setDesc(t)
+    showToast('🤖 Analyzing…', 'default')
 
-    // Extraer nombre del cliente: "for John", "client John Smith", "customer Maria"
-    const clientMatch = t.match(/(?:for|client|customer|mr\.?|mrs\.?|ms\.?)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i)
-    if (clientMatch) setClient(clientMatch[1])
+    // Usar IA para interpretar el texto en cualquier idioma
+    const parsed = await parseVoiceWithAI(t)
 
-    // Extraer dirección: números seguidos de nombre de calle
-    const addrMatch = t.match(/\b(\d+\s+[A-Za-z]+(?:\s+(?:St|Ave|Blvd|Rd|Dr|Ln|Way|Ct|Circle|Street|Avenue|Road|Drive))?(?:,\s*[A-Za-z\s]+)?)\b/i)
-    if (addrMatch) setAddress(addrMatch[1])
-
-    // Extraer teléfono
-    const phoneMatch = t.match(/\(?\d{3}\)?[\s\-]?\d{3}[\s\-]?\d{4}/)
-    if (phoneMatch) setPhone(phoneMatch[0])
+    if (parsed) {
+      if (parsed.job_description) setDesc(parsed.job_description)
+      if (parsed.client_name) setClient(parsed.client_name)
+      if (parsed.client_address) setAddress(parsed.client_address)
+      if (parsed.client_phone) setPhone(parsed.client_phone)
 
 
-    // Extraer precios — quitar dirección primero para no confundir número de calle con precio
-    const textForPrices = addrMatch ? t.replace(addrMatch[0], '') : t
-    // 1. Buscar $180 o "180 dollars"
-    let prices = [...textForPrices.matchAll(/\$(\d{2,5})|(\d{2,5})\s*(?:dollars?|bucks?)/gi)]
-      .map(m => parseInt(m[1] || m[2])).filter(n => n >= 50 && n <= 50000)
-    // 2. Buscar números después de "options", "option", "pricing"
-    if (prices.length === 0) {
-      const pm = textForPrices.match(/(?:options?|pricing|quote)[,\s]+(\d{2,5})[,\s]+(\d{2,5})?[,\s]*(\d{2,5})?/i)
-      if (pm) prices = [pm[1],pm[2],pm[3]].filter(Boolean).map(Number).filter(n => n >= 50 && n <= 50000)
+      if (parsed.prices?.length >= 1) {
+        setOpts(prev => prev.map((o, i) => ({
+          ...o,
+          amount: String(parsed.prices[i] || o.amount || '')
+        })))
+      }
+      const flags = [
+        parsed.client_name ? '👤' : '',
+        parsed.client_address ? '📍' : '',
+        parsed.prices?.length ? '💰' : '',
+      ].filter(Boolean).join(' ')
+      showToast(`Got it! ${flags} Review and adjust.`, 'success')
+    } else {
+      showToast('Voice captured — fill in the details.', 'default')
     }
-    if (prices.length >= 1) setOpts(prev => prev.map((o, i) => ({ ...o, amount: String(prices[i] || '') })))
-
-    showToast(`Voice captured! ${clientMatch ? '👤 ' : ''}${addrMatch ? '📍 ' : ''}${prices.length ? '💰 ' : ''}Review fields.`, 'success')
   }
 
   async function handleSave() {
