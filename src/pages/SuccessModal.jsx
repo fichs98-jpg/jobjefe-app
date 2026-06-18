@@ -1,10 +1,11 @@
+import { normalizePhone } from '../lib/phone'
 import { useStore } from '../store/useStore'
 
 export default function SuccessModal({ data, onClose }) {
   const { showToast } = useStore()
   if (!data) return null
   const { link, client, phone } = data
-  const phoneClean = phone ? phone.replace(/[^\d+]/g, '') : ''
+  const phoneClean = normalizePhone(phone)
   const waMsg = encodeURIComponent(`Hi ${client || ''}! Here's your quote — tap to review and approve: ${link}`)
   const waUrl = phoneClean ? `https://wa.me/${phoneClean}?text=${waMsg}` : `https://wa.me/?text=${waMsg}`
 
